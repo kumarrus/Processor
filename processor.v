@@ -7,19 +7,21 @@ module processor (SW, LEDR, KEY, LEDG, CLOCK_50, R0, R1, R2, R3, R4, R5, R6, R7,
 	output [15:0] R0, R1, R2, R3, R4, R5, R6, R7, G, A;
 	output [15:0] addr, data_out, din;
 
-	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], LEDR[15:0], LEDG[2:0], R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], SW[15:0], LEDR[15:0], LEDG[2:0], R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
 endmodule
 
-module process (Clock, Resetn, Run, Done, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+module process (Clock, Resetn, Run, Done, sws, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
 	input Clock, Resetn, Run;
 	output Done;
 	output [15:0] addr, data_out, din;
+	input [15:0] sws;
 	wire mem_wr_en, led_en, write, seg_en, port_en;
 	
 	output [15:0] bus;
 	wire [15:0] led_out;
 	output [2:0] Tstep_Q;
 	output [15:0] R0, R1, R2, R3, R4, R5, R6, R7, G, A;
+	wire [15:0] portn_out, mem_out;
 	
 	//upcount #(5) counter (~Resetn, MClock, c_out);
 	//rom myRom (addr, MClock, m_out); 
@@ -28,12 +30,12 @@ module process (Clock, Resetn, Run, Done, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, 
 		.clock(Clock),
 		.data(data_out),
 		.wren(mem_wr_en),
-		.q(din)
+		.q(mem_out)
 	);
 	
-	chipselect cs(addr[15:12], write, mem_wr_en, led_en, seg_en, port_en);
+	chipselect cs(addr[15:12], write, mem_wr_en, led_en, seg_en, port_en, din, portn_out, mem_out);
 	
-	port_n switches(SW[15:0], Clock, din, port_en);
+	port_n switches(sws, Clock, portn_out);
 	
 	regn reg_0 (data_out, led_en, Clock, led_out);
 	proc p (din, Resetn, Clock, Run, Done, write, data_out, addr, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A);
@@ -369,22 +371,26 @@ module alu(OP, IN1, IN2, OUT);
 
 endmodule
 
-module chipselect (A, write, mem_wr_en, led_en, seg_en, port_en);
+module chipselect (A, write, mem_wr_en, led_en, seg_en, port_en, din, portn_out, mem_out);
 	input [3:0] A;
 	input write;
 	output mem_wr_en, led_en, seg_en, port_en;
+	input [15:0] portn_out, mem_out;
+	output [15:0] din;
 	
 	assign mem_wr_en	 = (~(A[3] | A[2] | A[1] | A[0])) & write;
 	assign led_en		 = (~(A[3] | A[2] | A[1] | ~A[0])) & write;
 	assign seg_en		 = (~(A[3] | A[2] | ~A[1] | A[0])) & ~write;
 	assign port_en		 = (~(A[3] | ~A[2] | A[1] | A[0])) & ~write;
+	
+	assign din = (port_en)?portn_out:mem_out;
 
 endmodule
 
-module port_n (SW, Clock, swout, port_en);
+module port_n (SW, Clock, swout);
 	input [15:0] SW;
 	output [15:0] swout;
 	input Clock;
 	
-	regn reg_sw(SW, port_en, Clock, swout);
+	regn reg_sw(SW, 1, Clock, swout);
 endmodule
