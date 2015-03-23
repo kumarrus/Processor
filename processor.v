@@ -252,13 +252,13 @@ module not_equal_0(D, Din_ne_0);
 	assign Din_ne_0 = (D != 0);
 endmodule
 
-module Program_Counter(Clear, D, incr_PC, R7in, Clock, Q);
-	input Clear, Clock, incr_PC, R7in;
+module Program_Counter(Resetn, D, incr_PC, R7in, Clock, Q);
+	input Resetn, Clock, incr_PC, R7in;
 	input [15:0] D;
 	output reg [15:0] Q;
 	
 	always @(posedge Clock)
-		if (Clear)
+		if (~Resetn)
 			Q <= 0;
 		else if(incr_PC)
 			Q <= Q + 1'b1;
@@ -369,3 +369,23 @@ module chipselect (A, write, mem_wr_en, led_en);
 	assign led_en		 = (~(A[3] | A[2] | A[1] | ~A[0])) & write;
 
 endmodule
+
+
+module seg7_scroll (En, R0, R1, R2, R3, R4, R5, R6, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, Clock);
+	input [7:0] R0, R1, R2, R3, R4, R5, R6;
+	output reg [7:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6;
+	input En, Clock;
+	
+	always@(posedge Clock) begin
+		if(En) begin
+			HEX0 <= R0;
+			HEX1 <= R1;
+			HEX2 <= R2;
+			HEX3 <= R3;
+			HEX4 <= R4;
+			HEX5 <= R5;
+			HEX6 <= R6;
+		end
+	end
+	
+endmodule	
