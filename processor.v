@@ -150,6 +150,11 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 									Enable_out = 1;
 									Ain = 1;
 								end
+						ld:	begin
+									ERout = RY;
+									Enable_out = 1;
+									ADDRin = 1;
+								end
 						mvnz:	begin
 									if(G_ne_0) begin
 										ERout = RY;
@@ -165,15 +170,43 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 					endcase
 				end
 			T2: begin
-					ERout = RY;
-					Enable_out = 1;
-					Gin = 1;
-					if(opcode == sub)		AddSub = 1;
+					case(opcode)
+						add: 	begin
+									ERout = RY;
+									Enable_out = 1;
+									Gin = 1;
+								end
+						sub: 	begin
+									ERout = RY;
+									Enable_out = 1;
+									Gin = 1;
+									AddSub = 1;
+								end
+						sub: 	begin
+
+								end
+						default: ;
+					endcase
 				end
-			T3: begin
-					Gout = 1;
-					ERin = RX;
-					Enable_in = 1;
+			T3:begin
+					case(opcode)
+						add: 	begin
+									Gout = 1;
+									ERin = RX;
+									Enable_in = 1;
+								end
+						sub: 	begin
+									Gout = 1;
+									ERin = RX;
+									Enable_in = 1;
+								end
+						ld: 	begin
+									DINout = 1;
+									ERin = RX;
+									Enable_in = 1;
+								end
+						default: ;
+					endcase
 					Done = 1;
 					Clear = 1;
 				end
