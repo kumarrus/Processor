@@ -1,10 +1,11 @@
-module processor (SW, LEDR, KEY, LEDG);
+module processor (SW, LEDR, KEY, LEDG, CLOCK_50);
 	input [2:0] KEY;
 	input [17:0] SW;
 	output [17:0] LEDR;
 	output [4:0] LEDG;
+	input CLOCK_50;
 
-	process myp (~KEY[1], KEY[0], SW[17], LEDR[17], LEDR[15:0]);
+	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], LEDR[15:0]);
 endmodule
 
 module process (Clock, Resetn, Run, Done, led_out);
@@ -117,6 +118,9 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 		Clear = 0;
 		ERin = 0;
 		ERout = 0;
+		ADDRin = 0;
+		DOUTin = 0;
+		W_D = 0;
 		
 		case(Tstep_Q)
 			T0: begin
@@ -155,6 +159,11 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 									Enable_out = 1;
 									ADDRin = 1;
 								end
+						st:	begin
+									ERout = RX;
+									Enable_out = 1;
+									DOUTin = 1;
+								end
 						mvnz:	begin
 									if(G_ne_0) begin
 										ERout = RY;
@@ -165,51 +174,53 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 									Done = 1;
 									Clear = 1;
 								end
-
 						default:	;
 					endcase
 				end
-			T2: begin
-					case(opcode)
-						add: 	begin
-									ERout = RY;
-									Enable_out = 1;
-									Gin = 1;
-								end
-						sub: 	begin
-									ERout = RY;
-									Enable_out = 1;
-									Gin = 1;
-									AddSub = 1;
-								end
-						sub: 	begin
-
-								end
-						default: ;
-					endcase
-				end
-			T3:begin
-					case(opcode)
-						add: 	begin
-									Gout = 1;
-									ERin = RX;
-									Enable_in = 1;
-								end
-						sub: 	begin
-									Gout = 1;
-									ERin = RX;
-									Enable_in = 1;
-								end
-						ld: 	begin
-									DINout = 1;
-									ERin = RX;
-									Enable_in = 1;
-								end
-						default: ;
-					endcase
-					Done = 1;
-					Clear = 1;
-				end
+			T2: 	begin
+						case(opcode)
+							add: 	begin
+										ERout = RY;
+										Enable_out = 1;
+										Gin = 1;
+									end
+							sub: 	begin
+										ERout = RY;
+										Enable_out = 1;
+										Gin = 1;
+										AddSub = 1;
+									end
+							st:	begin
+										ERout = RY;
+										Enable_out = 1;
+										ADDRin = 1;
+										W_D = 1;
+									end
+							default: ;
+						endcase
+					end
+			T3: 	begin
+						case(opcode)
+							add: 	begin
+										Gout = 1;
+										ERin = RX;
+										Enable_in = 1;
+									end
+							sub: 	begin
+										Gout = 1;
+										ERin = RX;
+										Enable_in = 1;
+									end
+							ld: 	begin
+										DINout = 1;
+										ERin = RX;
+										Enable_in = 1;
+									end
+							default: ;
+						endcase
+						Done = 1;
+						Clear = 1;
+					end
 			default:	;
 		endcase
 	end
