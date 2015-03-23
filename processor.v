@@ -64,7 +64,10 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 							T1 = 3'b001, 
 							T2 = 3'b010, 
 							T3 = 3'b011,
-							T4 = 3'b100;
+							T4 = 3'b100,
+							T5 = 3'b101,
+							T6 = 3'b110,
+							T7 = 3'b111;
 	parameter [2:0]	mv = 3'b000, 
 							mvi = 3'b001, 
 							add = 3'b010, 
@@ -121,13 +124,22 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 		ADDRin = 0;
 		DOUTin = 0;
 		W_D = 0;
+		incr_PC = 0;
 		
 		case(Tstep_Q)
 			T0: begin
-					IRin = 1;
-					if(~Run)		Clear = 1;	
+					ERout = R7;
+					Enable_out = 1;
+					ADDRin = 1;
+					if(~Run)		Clear = 1;
 				end
-			T1: begin
+			T1: begin	
+					incr_PC = 1;
+				end
+			T2: begin
+					IRin = 1;
+				end
+			T3: begin
 					case(opcode)
 						mv: 	begin
 									ERout = RY;
@@ -138,11 +150,9 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 									Clear = 1;
 								end
 						mvi: 	begin
-									DINout = 1;
-									ERin = RX;
-									Enable_in = 1;
-									Done = 1;
-									Clear = 1;
+									ERout = R7;
+									Enable_out = 1;
+									ADDRin = 1;
 								end
 						add:	begin
 									ERout = RX;
@@ -177,8 +187,11 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 						default:	;
 					endcase
 				end
-			T2: 	begin
+			T4: 	begin
 						case(opcode)
+							mvi: 	begin
+										incr_PC = 1;
+									end
 							add: 	begin
 										ERout = RY;
 										Enable_out = 1;
@@ -199,8 +212,13 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR);
 							default: ;
 						endcase
 					end
-			T3: 	begin
+			T5: 	begin
 						case(opcode)
+							mvi: 	begin
+										DINout = 1;
+										ERin = RX;
+										Enable_in = 1;
+									end
 							add: 	begin
 										Gout = 1;
 										ERin = RX;
