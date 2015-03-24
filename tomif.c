@@ -29,8 +29,10 @@ enum reg {
 
 int hexChipSel = 2;
 int switchChipSel = 4;
-FILE *file;
-char *filename = "inst_mem.mif";
+FILE *outFile;
+char *outFilename = "inst_mem.mif";
+FILE *inFile;
+char *inFilename = "assm_code.txt";
 int instruction_no = 0;
 
 void remove_newline(char *walker) {
@@ -41,9 +43,9 @@ void remove_newline(char *walker) {
 }
 
 char* tokenize(char *walker) {
-	while(walker && *walker != ' ')
+	while(walker && *walker != ' ' && *walker != ',' && *walker != '\t')
 		walker++;
-	if(walker) {
+	while(walker && (*walker == ' ' || *walker == ',' || *walker == '\t')) {
 		*walker=0;
 		walker++;
 	}
@@ -56,10 +58,10 @@ void mvi_func(int reg, int imm16) {
 	//mvi r5, addr
 	out = (mvi<<3) + reg;
 	out = (out<<10);
-	fprintf(file, "\t%d   :   %d;\n", instruction_no++, out);
+	fprintf(outFile, "\t%d   :   %d;\n", instruction_no++, out);
 
 	out = imm16;
-	fprintf(file, "\t%d   :   %d;\n", instruction_no++, out);
+	fprintf(outFile, "\t%d   :   %d;\n", instruction_no++, out);
 }
 
 void gen_comm(int ass, char* rx, char* ry) {
@@ -74,34 +76,41 @@ void gen_comm(int ass, char* rx, char* ry) {
 	out = (out<<3) + regNum;
 
 	out = (out<<7);	//padd with zeroes to make 16-bit
-	fprintf(file, "\t%d   :   %d;\n", instruction_no++, out);
+	fprintf(outFile, "\t%d   :   %d;\n", instruction_no++, out);
 }
 
 void initialize_file()
 {
-	fprintf(file, "WIDTH=%d;\n", WIDTH);
-	fprintf(file, "DEPTH=%d;\n\n", DEPTH);
-	fprintf(file, "ADDRESS_RADIX=UNS;\nDATA_RADIX=UNS;\n\n");
-	fprintf(file, "CONTENT BEGIN\n");
+	fprintf(outFile, "WIDTH=%d;\n", WIDTH);
+	fprintf(outFile, "DEPTH=%d;\n\n", DEPTH);
+	fprintf(outFile, "ADDRESS_RADIX=UNS;\nDATA_RADIX=UNS;\n\n");
+	fprintf(outFile, "CONTENT BEGIN\n");
 }
 
 int main() {
 
-	file = fopen(filename, "w+");
+	inFile = fopen(inFilename, "r");
+
+	outFile = fopen(outFilename, "w+");
 	initialize_file();
 
+	char * code = NULL;
+	size_t len = 0;
+	ssize_t read;
+	//char code[50] = {0};
 
-	while(1){
-		char code[50] = {0};
-		fgets (code, 50, stdin);
+	while((read = getline(&code, &len, inFile)) != -1){
+		//fgets (code, 50, stdin);
 
-		if(strcmp(code, "done\n") == 0)
-			break;
+		if(code[0] == '#' || code[0] == '\n')
+			continue;
 
 		char *command = code;
 		char *arg1 = tokenize(code);
 		char *arg2 = tokenize(code);
 		remove_newline(arg2);
+
+		printf("::%s::%s::%s::\n", command, arg1, arg2);
 
 		int regNum;
 		int out=0;
@@ -121,19 +130,18 @@ int main() {
 			gen_comm(st, "r6", "r5");
 		}
 		else if(strcmp(command, "ldsw")==0) { //load switches
-			//uses r5 as addr	-	0100 0000 0000 0000
-			//uses r6 as target
+			//uses rx as addr	-	0100 0000 0000 0000
+			//uses ry as target
+			int rx, ry;
+			sscanf(arg1, "%*c%d", &rx);
+			sscanf(arg2, "%*c%d", &ry);
 
-			//mvi r5, addr
+			//mvi rx, addr
 			int addr = (switchChipSel<<12);
-			mvi_func(r5, addr);
+			mvi_func(rx, addr);
 
-			//ld r6, r5
-			out = ld;
-			out = (out<<3) + r6;
-			out = (out<<3) + r5;
-			out = (out<<7);
-			fprintf(file, "\t%d   :   %d;\n", instruction_no++, out);
+			//ld ry, rx
+			gen_comm(ld, arg2, arg1);
 		}
 		else {
 			if(strcmp(command, "mv")==0)
@@ -157,9 +165,11 @@ int main() {
 		}
 	}
 	
-	fprintf(file, "\t[%d..%d]  :   %d;\n", instruction_no, DEPTH-1, 0);
-	fprintf(file, "END;\n");
-	fclose(file);
+	fprintf(outFile, "\t[%d..%d]  :   %d;\n", instruction_no, DEPTH-1, 0);
+	fprintf(outFile, "END;\n");
+	fclose(outFile);
+
+	fclose(inFile);
 
 	return 0;
 }
