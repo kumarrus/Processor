@@ -1,4 +1,4 @@
-module processor (SW, LEDR, KEY, LEDG, CLOCK_50, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+module processor (SW, LEDR, KEY, LEDG, CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
 	input [2:0] KEY;
 	input [17:0] SW;
 	output [17:0] LEDR;
@@ -6,16 +6,19 @@ module processor (SW, LEDR, KEY, LEDG, CLOCK_50, R0, R1, R2, R3, R4, R5, R6, R7,
 	input CLOCK_50;
 	output [15:0] R0, R1, R2, R3, R4, R5, R6, R7, G, A;
 	output [15:0] addr, data_out, din;
+	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6;
 
-	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], SW[15:0], LEDR[15:0], LEDG[2:0], R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+
+	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], SW[15:0], HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, LEDR[15:0], LEDG[2:0], R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
 endmodule
 
-module process (Clock, Resetn, Run, Done, sws, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+module process (Clock, Resetn, Run, Done, sws, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
 	input Clock, Resetn, Run;
 	output Done;
 	output [15:0] addr, data_out, din;
 	input [15:0] sws;
 	wire mem_wr_en, led_en, write, seg_en, port_en;
+	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6;
 	
 	output [15:0] bus;
 	wire [15:0] led_out;
@@ -36,7 +39,7 @@ module process (Clock, Resetn, Run, Done, sws, bus, Tstep_Q, R0, R1, R2, R3, R4,
 	chipselect cs(addr[15:12], write, mem_wr_en, led_en, seg_en, port_en, din, portn_out, mem_out);
 	
 	port_n switches(sws, Clock, portn_out);
-	
+	seg7_scroll  seg7(seg_en, data_out[6:0], data_out[9:7], HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, Clock);
 	regn reg_0 (data_out, led_en, Clock, led_out);
 	proc p (din, Resetn, Clock, Run, Done, write, data_out, addr, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A);
 	
@@ -394,3 +397,25 @@ module port_n (SW, Clock, swout);
 	
 	regn reg_sw(SW, 1, Clock, swout);
 endmodule
+
+module seg7_scroll (En, Data, Select, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, Clock);
+	input [6:0] Data;
+	input [2:0] Select;
+	output reg [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6;
+	input En, Clock;
+	
+	always@(posedge Clock) begin
+		if(En) begin
+			case(Select)
+				3'b000: HEX0 <= Data;
+				3'b001: HEX1 <= Data;
+				3'b010: HEX2 <= Data;
+				3'b011: HEX3 <= Data;
+				3'b100: HEX4 <= Data;
+				3'b101: HEX5 <= Data;
+				3'b110: HEX6 <= Data;
+				default: ;
+			endcase
+		end
+	end
+endmodule	
