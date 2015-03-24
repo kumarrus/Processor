@@ -1,18 +1,18 @@
-module processor (SW, LEDR, KEY, LEDG, CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+module processor (SW, LEDR, KEY, LEDG, CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6);
 	input [2:0] KEY;
 	input [17:0] SW;
 	output [17:0] LEDR;
 	output [4:0] LEDG;
 	input CLOCK_50;
-	output [15:0] R0, R1, R2, R3, R4, R5, R6, R7, G, A;
-	output [15:0] addr, data_out, din;
+	wire [15:0] R0, R1, R2, R3, R4, R5, R6, R7, G, A;
+	wire [15:0] addr, data_out, din;
 	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6;
+	wire [8:0] IR;
 
-
-	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], SW[15:0], HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, LEDR[15:0], LEDG[2:0], R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+	process myp (CLOCK_50, KEY[0], SW[17], LEDR[17], SW[15:0], HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, LEDR[15:0], LEDG[2:0], R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din, IR);
 endmodule
 
-module process (Clock, Resetn, Run, Done, sws, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din);
+module process (Clock, Resetn, Run, Done, sws, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, addr, data_out, din, IR);
 	input Clock, Resetn, Run;
 	output Done;
 	output [15:0] addr, data_out, din;
@@ -25,11 +25,12 @@ module process (Clock, Resetn, Run, Done, sws, HEX0, HEX1, HEX2, HEX3, HEX4, HEX
 	output [2:0] Tstep_Q;
 	output [15:0] R0, R1, R2, R3, R4, R5, R6, R7, G, A;
 	wire [15:0] portn_out, mem_out;
+	output [8:0] IR;
 	
 	//upcount #(5) counter (~Resetn, MClock, c_out);
 	//rom myRom (addr, MClock, m_out); 
 	wram myRam(
-		.address(addr[6:0]),
+		.address(addr[11:0]),
 		.clock(Clock),
 		.data(data_out),
 		.wren(mem_wr_en),
@@ -39,13 +40,13 @@ module process (Clock, Resetn, Run, Done, sws, HEX0, HEX1, HEX2, HEX3, HEX4, HEX
 	chipselect cs(addr[15:12], write, mem_wr_en, led_en, seg_en, port_en, din, portn_out, mem_out);
 	
 	port_n switches(sws, Clock, portn_out);
-	seg7_scroll  seg7(seg_en, data_out[6:0], data_out[9:7], HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, Clock);
+	seg7_scroll  seg7(seg_en, data_out[6:0], addr[2:0], HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, Clock);
 	regn reg_0 (data_out, led_en, Clock, led_out);
-	proc p (din, Resetn, Clock, Run, Done, write, data_out, addr, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A);
+	proc p (din, Resetn, Clock, Run, Done, write, data_out, addr, bus, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, IR);
 	
 endmodule
 
-module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR, BusWires, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A);
+module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR, BusWires, Tstep_Q, R0, R1, R2, R3, R4, R5, R6, R7, G, A, IR);
     input [15:0] DIN;
     input Resetn, Clock, Run;
     output Done, W;
@@ -54,7 +55,7 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR, BusWires, Tstep_Q, R0
     //. . . declare variables
 	 output [15:0] BusWires;
 
-    wire [8:0] IR;
+    output [8:0] IR;
     wire [2:0] opcode, RX, RY;
     assign opcode = IR[8:6];
     assign RX = IR[5:3];
@@ -108,13 +109,13 @@ module proc (DIN, Resetn, Clock, Run, Done, W, DOUT, ADDR, BusWires, Tstep_Q, R0
 	
 	regn reg_A (BusWires, Ain, Clock, A);
 	regn reg_G (AddSubOut, Gin, Clock, G);
-	regn #(8) reg_IR (DIN[15:7], IRin, Clock, IR);
+	regn #(9) reg_IR (DIN[15:7], IRin, Clock, IR);
 	
 	regn #(1) reg_W (W_D, 1, Clock, W);
 	regn reg_ADDR (BusWires, ADDRin, Clock, ADDR);
 	regn reg_DOUT (BusWires, DOUTin, Clock, DOUT);
 
-	alu AddSubALU (AddSub, BusWires, A, AddSubOut);
+	alu AddSubALU (AddSub, A, BusWires, AddSubOut);
 	megamux Multiplexers ({DINout, Rout[7:0], Gout}, DIN, R7, R6, R5, R4, R3, R2, R1, R0, G, BusWires);
 	////////////////////////////////////////////////////////////////
 	not_equal_0 G_not_0(G, G_ne_0);
