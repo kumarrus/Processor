@@ -1,0 +1,12 @@
+# Comments and empty lines are ignored!
+
+#	Sample Code:
+#	mvi rx, Imm16
+#	mv rx, ry
+#	add rx, ry
+#	sub rx, ry
+#	ld rx, ry
+#	st rx, ry
+#	mvnz rx, ry
+#	sthex Hex(0-6), Num(0-255)
+#	ldsw rx(ADDR), ry(DATA)
