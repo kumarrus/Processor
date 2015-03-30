@@ -1,4 +1,4 @@
-# Comments and empty lines are ignored!
+# Comments and empty lines are ignored! ;)
 
 #	Sample Code:
 #	mvi rx, Imm16
@@ -8,5 +8,11 @@
 #	ld rx, ry
 #	st rx, ry
 #	mvnz rx, ry
-#	sthex Hex(0-6), Num(0-255)
-#	ldsw rx(ADDR), ry(DATA)
+#	sthex Hexa2(0-F), Hexa2(0-F)
+#	ldsw rx(DEST), ry(SOURCE-JUNK)
+#	stled rx(SOURCE), ry(DEST-JUNK)
+
+mv r2, r7
+ldsw r0, r5
+stled r0, r5
+mv r7, r2
