@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #define WIDTH 16
-#define DEPTH 128
+#define DEPTH 256
 
 enum Assembly {
 	mv = 0,
@@ -13,7 +14,8 @@ enum Assembly {
 	ld = 4,
 	st = 5,
 	sthex = 7,
-	ldsw = 8
+	ldsw = 8,
+	stled = 8
 };
 
 enum reg {
@@ -27,8 +29,9 @@ enum reg {
 	r7
 };
 
-int hexChipSel = 2;
-int switchChipSel = 4;
+int hexChipSel = 1;
+int switchChipSel = 2;
+int ledChipSel = 4;
 FILE *outFile;
 char *outFilename = "inst_mem.mif";
 FILE *inFile;
@@ -54,7 +57,6 @@ char* tokenize(char *walker) {
 
 void mvi_func(int reg, int imm16) {
 	int out=0;
-	instruction_no++;
 	//mvi r5, addr
 	out = (mvi<<3) + reg;
 	out = (out<<10);
@@ -87,11 +89,47 @@ void initialize_file()
 	fprintf(outFile, "CONTENT BEGIN\n");
 }
 
+
+ssize_t getdelim(char **linep, size_t *n, int delim, FILE *fp){
+    int ch;
+    size_t i = 0;
+    if(!linep || !n || !fp){
+        errno = EINVAL;
+        return -1;
+    }
+    if(*linep == NULL){
+        if(NULL==(*linep = malloc(*n=128))){
+            *n = 0;
+            errno = ENOMEM;
+            return -1;
+        }
+    }
+    while((ch = fgetc(fp)) != EOF){
+        if(i + 1 >= *n){
+            char *temp = realloc(*linep, *n + 128);
+            if(!temp){
+                errno = ENOMEM;
+                return -1;
+            }
+            *n += 128;
+            *linep = temp;
+        }
+        (*linep)[i++] = ch;
+        if(ch == delim)
+            break;
+    }
+    (*linep)[i] = '\0';
+    return !i && ch == EOF ? -1 : i;
+}
+ssize_t getline(char **linep, size_t *n, FILE *fp){
+    return getdelim(linep, n, '\n', fp);
+}
+
 int main() {
 
 	inFile = fopen(inFilename, "r");
 
-	outFile = fopen(outFilename, "w+");
+	outFile = fopen(outFilename, "w");
 	initialize_file();
 
 	char * code = NULL;
@@ -143,6 +181,21 @@ int main() {
 			//ld ry, rx
 			gen_comm(ld, arg2, arg1);
 		}
+		else if(strcmp(command, "stled")==0) { //store leds
+			//uses rx as addr	-	0010 0000 0000 0000
+			//uses ry as data	-	0000 0000 0xxx xxxx
+
+            int rx, ry;
+			sscanf(arg1, "%*c%d", &rx);
+			sscanf(arg2, "%*c%d", &ry);
+
+			//mvi r5, addr
+			int addr = (ledChipSel<<12);
+			mvi_func(rx, addr);
+
+			//st r6, r5
+			gen_comm(st, arg2, arg1);
+		}
 		else {
 			if(strcmp(command, "mv")==0)
 				gen_comm(mv, arg1, arg2);
@@ -164,7 +217,7 @@ int main() {
 				gen_comm(st, arg1, arg2);
 		}
 	}
-	
+
 	fprintf(outFile, "\t[%d..%d]  :   %d;\n", instruction_no, DEPTH-1, 0);
 	fprintf(outFile, "END;\n");
 	fclose(outFile);
