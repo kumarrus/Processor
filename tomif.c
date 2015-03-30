@@ -29,9 +29,9 @@ enum reg {
 	r7
 };
 
-int hexChipSel = 1;
+int ledChipSel = 1;
 int switchChipSel = 2;
-int ledChipSel = 4;
+int hexChipSel = 4;
 FILE *outFile;
 char *outFilename = "inst_mem.mif";
 FILE *inFile;
@@ -150,51 +150,54 @@ int main() {
 
 		printf("::%s::%s::%s::\n", command, arg1, arg2);
 
-		int regNum;
-		int out=0;
-
 		if(strcmp(command, "sthex")==0) { //store hex
-			//uses r5 as addr	-	0010 0000 0000 0xxx
-			//uses r6 as data	-	0000 0000 0xxx xxxx
+			//uses r5 as addr	-	CCCC 0000 0000 0000
+			//uses r6 as data	-	DDDD DDDD DDDD DDDD
 
 			//mvi r5, addr
-			int addr = (hexChipSel<<12) + atoi(arg1);
+			int addr = (hexChipSel<<12);
 			mvi_func(r5, addr);
 
+            int num0, num1, num2, num3;
+            int totalNum = 0;
+			sscanf(arg1, "%x%x", &num3, &num2);
+			sscanf(arg2, "%x%x", &num1, &num0);
+
+            totalNum = (num3<<12) + (num2<<8) + (num1<<4) + num0;
 			//mvi r6, data
-			mvi_func(r6, atoi(arg2));
+			mvi_func(r6, totalNum);
 
 			//st r6, r5
 			gen_comm(st, "r6", "r5");
 		}
 		else if(strcmp(command, "ldsw")==0) { //load switches
-			//uses rx as addr	-	0100 0000 0000 0000
-			//uses ry as target
+			//uses rx as dest
+			//uses ry as source -	CCCC 0000 0000 0000
 			int rx, ry;
 			sscanf(arg1, "%*c%d", &rx);
 			sscanf(arg2, "%*c%d", &ry);
 
-			//mvi rx, addr
+			//mvi ry, addr
 			int addr = (switchChipSel<<12);
-			mvi_func(rx, addr);
+			mvi_func(ry, addr);
 
-			//ld ry, rx
-			gen_comm(ld, arg2, arg1);
+			//ld rx, ry
+			gen_comm(ld, arg1, arg2);
 		}
 		else if(strcmp(command, "stled")==0) { //store leds
-			//uses rx as addr	-	0010 0000 0000 0000
-			//uses ry as data	-	0000 0000 0xxx xxxx
+			//uses rx as source	-   0000 0000 0000 0000
+			//uses ry as dest	-	CCCC 0000 0000 0000
 
             int rx, ry;
 			sscanf(arg1, "%*c%d", &rx);
 			sscanf(arg2, "%*c%d", &ry);
 
-			//mvi r5, addr
+			//mvi ry, addr
 			int addr = (ledChipSel<<12);
-			mvi_func(rx, addr);
+			mvi_func(ry, addr);
 
-			//st r6, r5
-			gen_comm(st, arg2, arg1);
+			//st rx, ry
+			gen_comm(st, arg1, arg2);
 		}
 		else {
 			if(strcmp(command, "mv")==0)
